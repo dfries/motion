@@ -24,6 +24,7 @@ DAEMON=/usr/bin/motion
 PIDFILE=/var/run/$NAME.pid
 DEFAULTS=/etc/default/$NAME
 DESC="motion detection daemon"
+CONFIG=/etc/motion/motion.conf
 
 ENV="env -i LANG=C PATH=$PATH_BIN"
 
@@ -56,7 +57,7 @@ case "$1" in
         chown motion:motion /var/run/motion
 
 	log_daemon_msg "Starting $DESC" "$NAME" 
-if start-stop-daemon --start --oknodo --exec $DAEMON -b --chuid motion ; then
+if start-stop-daemon --start --oknodo --exec $DAEMON -b --chuid motion -- -c $CONFIG ; then
             log_end_msg 0
         else
             log_end_msg 1
