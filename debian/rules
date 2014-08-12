@@ -33,6 +33,7 @@ config.status:
 		--with-ffmpeg \
 		--with-mysql \
 		--with-pgsql
+		# --without-optimizecpu
 	touch configure-stamp
 
 build: build-arch build-indep
