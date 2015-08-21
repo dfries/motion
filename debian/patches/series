@@ -4,3 +4,6 @@
 # 020111027~5dd9ed4.patch
 # 01_videodev.h.diff
 02_libav_multiarch.patch
+
+#0004-copy-old-API-items-we-still-depend-on.patch
+#0005-fix-build-for-non-x86-platforms-which-define-neither.patch
