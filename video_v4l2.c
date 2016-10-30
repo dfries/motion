@@ -528,6 +528,86 @@ static int v4l2_set_pix_format(struct context *cnt, src_v4l2_t * vid_source,
     return -1;
 }
 
+/**
+ * v4l2_set_fps
+ */
+static void v4l2_set_fps(src_v4l2_t * vid_source, int hardware_fps) {
+    struct v4l2_streamparm setfps;
+    struct v4l2_frmivalenum frm;
+    struct v4l2_fract best_fract;
+    double best_fps = -1;
+    double request_fps = vid_source->fps;
+
+    memset(&setfps, 0, sizeof(setfps));
+    setfps.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+
+    if (xioctl(vid_source, VIDIOC_G_PARM, &setfps) == -1) {
+        MOTION_LOG(ERR, TYPE_VIDEO, SHOW_ERRNO, "%s VIDIOC_G_PARM");
+        return;
+    }
+
+    // -1 is don't touch
+    if(hardware_fps == -1) {
+        MOTION_LOG(NTC, TYPE_VIDEO, NO_ERRNO,
+            "%s: hardware fps detected as %.1f",
+            setfps.parm.capture.timeperframe.denominator /
+            (double)setfps.parm.capture.timeperframe.numerator);
+        return;
+    }
+
+    // 0 match vid_source->fps
+
+    // + (positive) base on passed in hardware_fps
+    if(hardware_fps > 0)
+        request_fps = hardware_fps;
+
+    /* can't set it if not supported */
+    if (!(setfps.parm.capture.capability & V4L2_CAP_TIMEPERFRAME))
+        return;
+
+    memset(&frm, 0, sizeof(frm));
+    frm.pixel_format = vid_source->dst_fmt.fmt.pix.pixelformat;
+    frm.width = vid_source->dst_fmt.fmt.pix.width;
+    frm.height = vid_source->dst_fmt.fmt.pix.height;
+    while (xioctl(vid_source, VIDIOC_ENUM_FRAMEINTERVALS, &frm) != -1 &&
+        frm.type == V4L2_FRMIVAL_TYPE_DISCRETE) {
+        double fps = frm.discrete.denominator / (double)frm.discrete.numerator;
+        MOTION_LOG(LOG_INFO, TYPE_VIDEO, NO_ERRNO,
+            "%s rate %u / %u is available",
+            frm.discrete.numerator, frm.discrete.denominator);
+        /* Use the currently discovered fps if
+         * - it is an exact match
+         * - it is closer to the target than the current best (under or over)
+         * - the current best is lower than the target and this is greater
+         */
+        if (fps == request_fps ||
+            (fps > best_fps && fps < request_fps) ||
+            (fps < best_fps && fps > request_fps) ||
+            (best_fps < request_fps && fps > request_fps)) {
+            best_fps = fps;
+            best_fract = frm.discrete;
+        }
+        ++frm.index;
+    }
+
+    /* No frame rates available */
+    if(best_fps == -1)
+        return;
+
+    setfps.parm.capture.timeperframe = best_fract;
+
+    if (xioctl(vid_source, VIDIOC_S_PARM, &setfps) == -1) {
+        MOTION_LOG(ERR, TYPE_VIDEO, SHOW_ERRNO, "v4l2_set_fps VIDIOC_S_PARM");
+        return;
+    }
+
+    MOTION_LOG(NTC, TYPE_VIDEO, NO_ERRNO,
+        "%s hardware capture fps set to %.1f fps", best_fps);
+}
+
+/**
+ * v4l2_set_mmap
+ */
 static int v4l2_set_mmap(src_v4l2_t * vid_source)
 {
     enum v4l2_buf_type type;
@@ -799,6 +879,7 @@ static unsigned char *v4l2_device_init(struct context *cnt, struct video_dev *vi
     if (v4l2_scan_controls(vid_source))
         goto err;
 
+    v4l2_set_fps(vid_source, cnt->conf.hardware_frame_limit);
     if (v4l2_set_mmap(vid_source))
         goto err;
 

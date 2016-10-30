@@ -43,6 +43,7 @@ struct config {
     int input;
     int norm;
     int frame_limit;
+    int hardware_frame_limit;
     int quiet;
     int useextpipe; /* ext_pipe on or off */
     const char *extpipe; /* full Command-line for pipe -- must accept YUV420P images  */

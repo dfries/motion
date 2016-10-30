@@ -340,6 +340,27 @@ config_param config_params[] = {
     print_int
     },
     {
+    "hardware_framerate",
+    /* The above frame rate is how often motion asks for frame, but that's not
+     * given to the hardware.  This is.  This isn't specific to USB webcams,
+     * some only support a fixed rate, for some that are variable
+     * the number selected is a maximum, and they will automatically lower
+     * for lower light conditions.  For example a Logitech webcam has
+     * 30, 25, 20, 15, 10, and 5 fps options, set for 30 fps it will auto
+     * lower to about 14 fps, but set it to 5 fps and it will have almost three
+     * times the exposure time capturing much more detail.
+     */
+    "# If supported sets hardware capture rate.\n"
+    "# USB webcams default to the highest rate available, setting a lower\n"
+    "# rate can enable longer exposures for better lower light images at the\n"
+    "# cost of more motion blur.\n"
+    "# -1 don't set, 0 (default) \"framerate\", specified frame rate.",
+    0,
+    CONF_OFFSET(hardware_frame_limit),
+    copy_int,
+    print_int
+    },
+    {
     "minimum_frame_time",
     "# Minimum time in seconds between capturing picture frames from the camera.\n"
     "# Default: 0 = disabled - the capture rate is given by the camera framerate.\n"
